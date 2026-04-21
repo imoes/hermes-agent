@@ -95,9 +95,22 @@ class TurnController {
     this.interrupted = true
     gw.request<SessionInterruptResponse>('session.interrupt', { session_id: sid }).catch(() => {})
 
-    const partial = this.bufRef.trimStart()
+    for (const msg of this.segmentMessages) {
+      appendMessage(msg)
+    }
 
-    partial ? appendMessage({ role: 'assistant', text: `${partial}\n\n*[interrupted]*` }) : sys('interrupted')
+    const partial = this.bufRef.trimStart()
+    const tools = this.pendingSegmentTools
+
+    if (partial || tools.length) {
+      appendMessage({
+        role: 'assistant',
+        text: partial ? `${partial}\n\n*[interrupted]*` : '*[interrupted]*',
+        ...(tools.length && { tools })
+      })
+    } else {
+      sys('interrupted')
+    }
 
     this.idle()
     this.clearReasoning()
